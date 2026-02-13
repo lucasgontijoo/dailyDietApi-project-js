@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { knex } from "../database.js";
 import z from "zod";
 import crypto from 'node:crypto'
-import { request } from "node:http";
+import { id } from "zod/v4/locales";
 
 export async function mealsRoutes(app: FastifyInstance) {
 
@@ -27,13 +27,35 @@ export async function mealsRoutes(app: FastifyInstance) {
     })
 
     // Route to update an existing meal
-    app.put('/', async(request, reply) => {
+    app.put('/:id', async(request, reply) => {
+        const updateMealBodySchema = z.object({
+            name: z.string(),
+            description: z.string(),
+            in_diet: z.boolean(),
+        })
 
+        const { name, description, in_diet } = updateMealBodySchema.parse(request.body)
+
+        await knex('meals').where({
+            id: id
+        }).update({
+            name: name,
+            description: description,
+            in_diet: in_diet
+        })
     })
 
     // Route to delete an existing meal
-    app.delete('/', async(request, reply) => {
+    app.delete('/:id', async(request, reply) => {
+        const deleteMealParamsSchema = z.object({
+            id: z.uuid()
+        })
 
+        const { id } = deleteMealParamsSchema.parse(request.params)
+
+        await knex('meals').where({
+            id: id
+        }).del()
     }) 
 
     // List all meals of an user
