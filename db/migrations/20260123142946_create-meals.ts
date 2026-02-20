@@ -1,5 +1,4 @@
 import type { Knex } from "knex";
-import { ta } from "zod/v4/locales";
 
 
 export async function up(knex: Knex): Promise<void> {
