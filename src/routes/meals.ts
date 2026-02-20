@@ -2,7 +2,6 @@ import { FastifyInstance } from "fastify";
 import { knex } from "../database.js";
 import z from "zod";
 import crypto from 'node:crypto'
-import { id } from "zod/v4/locales";
 
 export async function mealsRoutes(app: FastifyInstance) {
 
@@ -26,15 +25,44 @@ export async function mealsRoutes(app: FastifyInstance) {
         return reply.status(201).send()
     })
 
-    // Route to update an existing meal
+    // Route to total update an existing meal
     app.put('/:id', async(request, reply) => {
-        const updateMealBodySchema = z.object({
+        const updateTotalMealBodySchema = z.object({
             name: z.string(),
             description: z.string(),
             in_diet: z.boolean(),
         })
 
-        const { name, description, in_diet } = updateMealBodySchema.parse(request.body)
+        const updateMealIdSchema =  z.object({
+            id: z.uuid()
+        })
+
+        const { name, description, in_diet} = updateTotalMealBodySchema.parse(request.body)
+        const { id } = updateMealIdSchema.parse(request.params)
+
+        await knex('meals').where({
+            id: id
+        }).update({
+            name: name,
+            description: description,
+            in_diet: in_diet
+        })
+    })
+
+    // Route to parcial update an existing meal
+    app.patch('/:id', async(request, reply) => {
+        const updateParcialMealBodySchema = z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+            in_diet: z.boolean().optional(), 
+        })
+
+        const updateMealIdSchema =  z.object({
+            id: z.uuid()
+        })  
+
+        const { name, description, in_diet} = updateParcialMealBodySchema.parse(request.body)
+        const { id } = updateMealIdSchema.parse(request.params)
 
         await knex('meals').where({
             id: id
