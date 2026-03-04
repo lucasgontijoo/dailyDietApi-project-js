@@ -41,7 +41,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     // Route to total update an existing meal
     app.put('/:id', {
         preHandler: [checkSessionIdExists]
-    }, async(request, reply) => {
+    }, async(request) => {
         const { sessionId } = request.cookies
 
         const updateTotalMealBodySchema = z.object({
@@ -70,7 +70,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     // Route to parcial update an existing meal
     app.patch('/:id', {
         preHandler: [checkSessionIdExists]
-    }, async(request, reply) => {
+    }, async(request) => {
         const { sessionId } = request.cookies
 
         const updateParcialMealBodySchema = z.object({
@@ -99,7 +99,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     // Route to delete an existing meal
     app.delete('/:id', {
         preHandler: [checkSessionIdExists]
-    }, async(request, reply) => {
+    }, async(request) => {
         const { sessionId } = request.cookies
 
         const deleteMealParamsSchema = z.object({
@@ -117,7 +117,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     // List all meals of an user
     app.get('/', {
         preHandler: [checkSessionIdExists]
-    }, async(request, reply) => {
+    }, async(request) => {
         const { sessionId } = request.cookies
 
         const meals = await knex('meals').select('*').where({
@@ -130,7 +130,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     // List a specific meal according to id
     app.get('/:id', {
         preHandler: [checkSessionIdExists]
-    }, async(request, reply) => {
+    }, async(request) => {
         const { sessionId } = request.cookies
 
         const getMealParamsSchema = z.object({
