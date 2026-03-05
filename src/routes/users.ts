@@ -42,7 +42,7 @@ export async function usersRoutes(app: FastifyInstance) {
         })
     })
 
-    // Route to list all users
+    // Route to list all users - PARA CONTROLE DO DEV
     app.get('/', async() => {
         const users = await knex('users').select('*')
         

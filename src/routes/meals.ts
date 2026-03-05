@@ -2,12 +2,16 @@ import { FastifyInstance } from "fastify";
 import { knex } from "../database.js";
 import z from "zod";
 import crypto from 'node:crypto'
-import { checkSessionIdExists } from "../middlewares/check-session-id-exists.js";
+import { authenticate } from "../middlewares/authenticate.js";
 
 export async function mealsRoutes(app: FastifyInstance) {
 
     // Route to create a new meal
-    app.post('/', async(request, reply) => {
+    app.post('/', {
+        onRequest: [authenticate]
+    }, async(request, reply) => {
+        const userId = request.user?.id
+
         const createMealBodySchema = z.object({
             name: z.string(),
             description: z.string(),
@@ -16,23 +20,12 @@ export async function mealsRoutes(app: FastifyInstance) {
 
         const { name, description, in_diet } = createMealBodySchema.parse(request.body)
 
-        let sessionId = request.cookies.sessionId
-
-        if(!sessionId) {
-            sessionId = crypto.randomUUID()
-
-            reply.cookie('sessionId', sessionId, {
-                path: '/',
-                maxAge: 60 * 60 * 24 * 7 // 7 days 
-            })
-        }
-
         await knex('meals').insert({
             id: crypto.randomUUID(),
             name,
             description,
             in_diet,
-            session_id: sessionId
+            session_id: userId
         })
 
         return reply.status(201).send()
@@ -40,9 +33,9 @@ export async function mealsRoutes(app: FastifyInstance) {
 
     // Route to total update an existing meal
     app.put('/:id', {
-        preHandler: [checkSessionIdExists]
-    }, async(request) => {
-        const { sessionId } = request.cookies
+        onRequest: [authenticate]
+    }, async(request, reply) => {
+        const userId = request.user?.id
 
         const updateTotalMealBodySchema = z.object({
             name: z.string(),
@@ -50,6 +43,7 @@ export async function mealsRoutes(app: FastifyInstance) {
             in_diet: z.boolean(),
         })
 
+        // O id está separado pois é recebido na URL e não no body
         const updateMealIdSchema =  z.object({
             id: z.uuid()
         })
@@ -57,21 +51,27 @@ export async function mealsRoutes(app: FastifyInstance) {
         const { name, description, in_diet} = updateTotalMealBodySchema.parse(request.body)
         const { id } = updateMealIdSchema.parse(request.params)
 
-        await knex('meals').where({
+        const meal = await knex('meals').where({
             id: id,
-            session_id: sessionId
+            session_id: userId
         }).update({
             name: name,
             description: description,
             in_diet: in_diet
         })
+
+        if(!meal) {
+            return reply.status(401).send({
+                message: "Unauthorized"
+            })
+        }
     })
 
     // Route to parcial update an existing meal
     app.patch('/:id', {
-        preHandler: [checkSessionIdExists]
-    }, async(request) => {
-        const { sessionId } = request.cookies
+        onRequest: [authenticate]
+    }, async(request, reply) => {
+        const userId = request.user?.id
 
         const updateParcialMealBodySchema = z.object({
             name: z.string().optional(),
@@ -86,21 +86,27 @@ export async function mealsRoutes(app: FastifyInstance) {
         const { name, description, in_diet} = updateParcialMealBodySchema.parse(request.body)
         const { id } = updateMealIdSchema.parse(request.params)
 
-        await knex('meals').where({
+        const meal = await knex('meals').where({
             id: id,
-            session_id: sessionId
+            session_id: userId
         }).update({
             name: name,
             description: description,
             in_diet: in_diet
         })
+
+        if(!meal) {
+            return reply.status(401).send({
+                message: "Unauthorized"
+            })
+        }
     })
 
     // Route to delete an existing meal
     app.delete('/:id', {
-        preHandler: [checkSessionIdExists]
-    }, async(request) => {
-        const { sessionId } = request.cookies
+        onRequest: [authenticate]
+    }, async(request, reply) => {
+        const userId = request.user?.id
 
         const deleteMealParamsSchema = z.object({
             id: z.uuid()
@@ -108,20 +114,26 @@ export async function mealsRoutes(app: FastifyInstance) {
 
         const { id } = deleteMealParamsSchema.parse(request.params)
 
-        await knex('meals').where({
+        const meal = await knex('meals').where({
             id: id,
-            session_id: sessionId
+            session_id: userId
         }).del()
+
+        if(!meal) {
+            return reply.status(401).send({
+                message: "Unauthorized"
+            })
+        }
     }) 
 
     // List all meals of an user
     app.get('/', {
-        preHandler: [checkSessionIdExists]
+        onRequest: [authenticate]
     }, async(request) => {
-        const { sessionId } = request.cookies
+        const userId = request.user?.id
 
         const meals = await knex('meals').select('*').where({
-            session_id: sessionId
+            session_id: userId
         })
 
         return { meals }
@@ -129,9 +141,9 @@ export async function mealsRoutes(app: FastifyInstance) {
 
     // List a specific meal according to id
     app.get('/:id', {
-        preHandler: [checkSessionIdExists]
+        onRequest: [authenticate]
     }, async(request) => {
-        const { sessionId } = request.cookies
+        const userId = request.user?.id
 
         const getMealParamsSchema = z.object({
             id: z.uuid()
@@ -141,9 +153,31 @@ export async function mealsRoutes(app: FastifyInstance) {
 
         const meal = await knex('meals').where({
             id: id,
-            session_id: sessionId
+            session_id: userId
         }).first()
 
         return { meal }
+    })
+
+    // Overview 
+    app.get('/overview', {
+      onRequest: [authenticate]
+    }, async(request, reply) => {
+      const userId = request.user?.id
+
+      const totalMeals = await knex('meals').select('*').where({
+        session_id: userId
+      }).count()
+
+      const totalMealsInDiet = await knex('meals').select('*').where({
+        session_id: userId
+      }).andWhere({
+        in_diet: true
+      }).count()
+
+      const totalMealsOutDiet = await knex('meals').select('*').where({
+        session_id: userId,
+        in_diet: false
+      }).count()
     })
 }
