@@ -3,7 +3,8 @@ import { knex } from '../database.js';
 import { z } from 'zod'
 import crypto from 'node:crypto' 
 import bcrypt from 'bcryptjs'
-// import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
+import { env } from '../env/index'
 
 export async function usersRoutes(app: FastifyInstance) {
 
@@ -77,6 +78,10 @@ export async function usersRoutes(app: FastifyInstance) {
         })
       }
 
-      // const token = jwt.sign({id: user.id, email: user.email}, env.)
+      const token = jwt.sign({id: user.id, email: user.email}, env.JWT_KEY, {
+        expiresIn: "1h"
+      })
+
+      return { token }
     })
 }

@@ -5,7 +5,8 @@ import 'dotenv/config'
 const envSchema = z.object({
     PORT: z.number().default(3333),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('production'),
-    DATABASE_URL: z.string()
+    DATABASE_URL: z.string(),
+    JWT_KEY: z.string()
 })
 
 const _env = envSchema.safeParse(process.env)
