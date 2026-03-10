@@ -158,26 +158,4 @@ export async function mealsRoutes(app: FastifyInstance) {
 
         return { meal }
     })
-
-    // Overview 
-    app.get('/overview', {
-      onRequest: [authenticate]
-    }, async(request, reply) => {
-      const userId = request.user?.id
-
-      const totalMeals = await knex('meals').select('*').where({
-        session_id: userId
-      }).count()
-
-      const totalMealsInDiet = await knex('meals').select('*').where({
-        session_id: userId
-      }).andWhere({
-        in_diet: true
-      }).count()
-
-      const totalMealsOutDiet = await knex('meals').select('*').where({
-        session_id: userId,
-        in_diet: false
-      }).count()
-    })
 }

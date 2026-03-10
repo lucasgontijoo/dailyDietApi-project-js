@@ -1,10 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { knex } from '../database.js';
-import { z } from 'zod'
+import { boolean, int, number, z } from 'zod'
 import crypto from 'node:crypto' 
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { env } from '../env/index'
+import { authenticate } from '../middlewares/authenticate.js';
 
 export async function usersRoutes(app: FastifyInstance) {
 
@@ -24,7 +25,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
         if(user.length != 0) {
           return reply.status(409).send({
-            message: "Já existe um usuário com este email cadastrado."
+            message: "A user with this email address is already registered."
           })
         }
 
@@ -38,7 +39,7 @@ export async function usersRoutes(app: FastifyInstance) {
         })
 
         return reply.status(201).send({
-          message: "Usuário cadastrado com sucesso."
+          message: "User successfully registered."
         })
     })
 
@@ -64,7 +65,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
       if(!user) {
         return reply.status(401).send({
-          message: "Não existe usuário cadastrado com as credenciais informadas."
+          message: "There is no registered user with the provided credentials."
         })
       }
 
@@ -74,14 +75,60 @@ export async function usersRoutes(app: FastifyInstance) {
 
       if(!isCorrectPassword) {
         return reply.status(401).send({
-          message: "Não existe usuário cadastrado com as credenciais informadas."
+          message: "There is no registered user with the provided credentials."
         })
       }
 
       const token = jwt.sign({id: user.id, email: user.email}, env.JWT_KEY, {
-        expiresIn: "1h"
+        expiresIn: "6h"
       })
 
       return { token }
+    })
+
+    // Overview 
+    app.get('/overview', {
+      onRequest: [authenticate]
+    }, async(request, reply) => {
+      const userId = request.user?.id
+
+      const totalMeals = await knex('meals').count('*', {as: 'Total meals: '}).where({
+        session_id: userId
+      }).first()
+
+      const totalMealsInDiet = await knex('meals').count('*', {as: 'Total meals in diet: '}).where({
+        session_id: userId,
+        in_diet: true
+      }).first()
+
+      const totalMealsOutDiet = await knex('meals').count('*', {as: 'Total meals out diet: '}).where({
+        session_id: userId,
+        in_diet: false
+      }).first()
+
+      const meals = await knex('meals').select('*').where({
+        session_id: userId
+      })
+
+      const bestSequence = meals.reduce<{currentSequence: number, bestSequence: number}>((acc, meal) => {
+        if(meal.in_diet) {
+          acc.currentSequence += 1
+        } else {
+          acc.currentSequence = 0
+        }
+
+        if(acc.currentSequence > acc.bestSequence) {
+          acc.bestSequence = acc.currentSequence
+        }
+
+        return acc
+      }, {bestSequence: 0, currentSequence: 0})
+
+      return reply.send({
+        totalMeals, 
+        totalMealsInDiet, 
+        totalMealsOutDiet, 
+        bestSequence
+      })
     })
 }

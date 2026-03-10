@@ -8,7 +8,7 @@ export async function authenticate(request: FastifyRequest, reply:FastifyReply) 
         const token = request.headers.authorization
 
         if(!token) {
-            throw new Error("Token não fornecido.")
+            throw new Error("Token not provided.")
         }   
 
         const decodedJwt = jwt.verify(token, env.JWT_KEY) as JWTUser
@@ -16,7 +16,7 @@ export async function authenticate(request: FastifyRequest, reply:FastifyReply) 
         
     } catch(error) {
         reply.status(401).send({
-            error: "Autenticação falhou."
+            error: "Authenticated fail."
         })
     }
 }
